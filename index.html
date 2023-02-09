@@ -1,0 +1,192 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Uploader</title>
+</head>
+
+<body>
+
+    <div class="loader-bg">
+        <div class="loader"></div>
+        <progress id="upload-progress" max="100" value="0"></progress>
+    </div>
+
+    <div class="upload-container">
+        <h1>Upload File</h1>
+        <input id="file-upload" type="file">
+        <button onclick="submitFile()">Upload</button>
+    </div>
+
+
+    <script>
+
+        function showLoader() {
+            document.querySelector('.loader-bg').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.querySelector('.loader-bg').style.display = 'none';
+        }
+
+        function setProgress(x){
+            document.querySelector('#upload-progress').value = x;
+        } 
+
+
+        async function submitFile() {
+            if (validateUpload()) {
+                let file = document.querySelector('#file-upload').files[0];
+                showLoader();
+                await uploadFile('http://localhost:3000/upload',file, setProgress);
+                hideLoader();
+            }
+        }
+
+        function validateUpload() {
+            let upload = document.querySelector('#file-upload');
+            if (upload.files.length == 0) {
+                upload.style.border = '2px solid red';
+                return false;
+            } else {
+                upload.style.border = 'none';
+                return true;
+            }
+
+        }
+
+
+        function uploadFile(url,file, onProgress = (x)=>{console.log('progress: ' + x)},onError = (e)=>{console.log('error: ' + e)}, chunksize = 1000) {
+            return new Promise((Resolve,Reject)=>{
+                let fileReader = new FileReader();
+                fileReader.onload = async (ev)=>{
+                    let chunkCount = ev.target.result.byteLength / chunksize;
+                    let fileName = Number.parseInt(Math.random() * 1000) + '_' + file.name;
+                    for(let i = 0; i < chunkCount + 1; i++){
+                        let chunk = ev.target.result.slice(i * chunksize,i * chunksize + chunksize)
+                        await new Promise((resolve,reject)=>{
+                            let request = new XMLHttpRequest();
+                            request.open('POST',url);
+                            request.setRequestHeader('Content-Type','application/octet-stream');
+                            request.setRequestHeader('file-name',fileName);
+                            request.send(chunk);
+                            request.onload = ()=>{
+                                let response = request.response;
+                                if(request.status != 200){
+                                    reject(response.message);
+                                }else{
+                                    resolve();
+                                }
+                            }
+                        }).catch((e)=>{
+                            onError(e);
+                        });
+                    onProgress(Math.round(i * 100/chunkCount,0));
+                    }
+                    return Resolve();
+                }
+            fileReader.readAsArrayBuffer(file);
+            });
+        }
+
+
+    </script>
+
+
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            background-color: rgb(0, 174, 107);
+            font-family: monospace;
+        }
+
+        .loader-bg {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .loader {
+            height: 150px;
+            width: 150px;
+            border: 10px solid mediumspringgreen;
+            border-radius: 100%;
+            border-top: 10px solid white;
+            box-shadow: 0px 0px 10px 0px rgba(255, 255, 255, 0.46);
+            animation: spin 0.5s linear infinite;
+            margin-bottom: 100px;
+        }
+
+        #upload-progress{
+            width: 90%;
+        }
+
+        .upload-container {
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: auto;
+            justify-content: center;
+            box-shadow: 0px 0px 10px 1px black;
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            background-color: rgb(3, 212, 131);
+
+        }
+
+        .upload-container input {
+            padding: 10px;
+        }
+
+        .upload-container>* {
+            margin-bottom: 15px;
+        }
+
+        .upload-container button {
+            outline: none;
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+            width: 200px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            background-color: mediumspringgreen;
+            box-shadow: 0px 0px 10px 0px black;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .upload-container button:hover {
+            cursor: pointer;
+            background-color: rgb(99, 246, 189);
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+</body>
+
+</html>
